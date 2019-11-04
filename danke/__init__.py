@@ -1,10 +1,12 @@
 from flask import Flask
+from flask_cors import CORS
 from danke import settings
 from danke.database import db
 from .api.v1 import blueprint as apiv1
 # from .api.v2 import blueprint as apiv2
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 
 
 def configure_app(flask_app):
