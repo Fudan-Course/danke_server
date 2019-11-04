@@ -68,9 +68,15 @@ class Login(Resource):
         'username_or_email': fields.String(description='username or email', example='ztx97@qq.com'),
         'password': fields.String(required=True, description='new account password', example='123456789')
     })
+    LoginData = api.model('LoginData', {
+        'user_id': fields.Integer(required=True),
+        'username': fields.String(),
+        'session_id': fields.String(required=True)
+    })
     LoginRsp = api.model('LoginRsp', {
         'err_code': fields.Integer(required=True),
-        'message': fields.String()
+        'message': fields.String(),
+        'data': fields.Nested(LoginData)
     })
 
     parser = reqparse.RequestParser()
@@ -80,26 +86,33 @@ class Login(Resource):
                         type=str, help='new user password')
 
     def do_login(self, username_or_email, password):
+        data = {
+            'user_id': -1,
+            'username': '',
+            'session_id': ''
+        }
         if not username_or_email:
-            return 1, '需要用户名或邮箱'
+            return 1, '需要用户名或邮箱', data
         user = None
         if '@' in username_or_email:  # 邮箱
             user = User.query.filter_by(email=username_or_email).first()
             if not user:
-                return 2, '邮箱不存在'
+                return 2, '邮箱不存在', data
         else:
             user = User.query.filter_by(username=username_or_email).first()
             if not user:
-                return 3, '用户名不存在'
+                return 3, '用户名不存在', data
         if user.password != password:
-            return 4, '密码错误'
+            return 4, '密码错误', data
         try:
             session = Session(user)
             session.save()
-            session_id = session.id
+            data['user_id'] = user.id
+            data['username'] = user.username
+            data['session_id'] = session.id
         except Exception as e:
-            return 9, e.message
-        return 0, '成功'
+            return 9, str(e), data
+        return 0, '成功', data
 
     @api.doc('login')
     @api.doc(body=LoginReq)
@@ -107,9 +120,9 @@ class Login(Resource):
     def post(self):
         '''用户登录'''
         args = self.parser.parse_args()
-        err_code, message = self.do_login(
+        err_code, message, data = self.do_login(
             args.username_or_email, args.password)
-        return Render.common_response(err_code, message), 200
+        return Render.common_response(err_code, message, data), 200
 
 
 # @api.route('/<code>')
