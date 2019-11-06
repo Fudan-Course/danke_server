@@ -79,8 +79,8 @@ class Register(Resource):
 class Login(Resource):
     # post
     LoginReq = api.model('LoginReq', {
-        'username_or_email': fields.String(description='username or email', example='16307130026@fudan.edu.cn'),
-        'password': fields.String(required=True, description='new account password', example='123456789')
+        'username_or_email': fields.String(required=True, example='16307130026@fudan.edu.cn'),
+        'password': fields.String(required=True, example='123456789')
     })
     LoginData = api.model('LoginData', {
         'user_id': fields.Integer(required=True),
@@ -93,10 +93,8 @@ class Login(Resource):
         'data': fields.Nested(LoginData)
     })
     parser = reqparse.RequestParser()
-    parser.add_argument('username_or_email', type=str,
-                        help='username or email')
-    parser.add_argument('password', required=True,
-                        type=str, help='new user password')
+    parser.add_argument('username_or_email', type=str)
+    parser.add_argument('password', required=True, type=str)
 
     @api.doc('login')
     @api.doc(body=LoginReq)
