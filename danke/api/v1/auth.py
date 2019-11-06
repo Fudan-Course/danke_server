@@ -1,7 +1,10 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
+
 from danke import settings
 from danke.core.checker import Checker
 from danke.core.render import Render
+from danke.core.mailer import Mailer
+from danke.core.tool import *
 
 from danke.database.user import User
 from danke.database.session import Session
@@ -10,19 +13,29 @@ from danke.database.session import Session
 api = Namespace('auth', description='用户注册、认证、登录与登出')
 
 
+def send_verify_code(code, receiver):
+    try:
+        Mailer.send_email_sync(title='旦课邮箱验证码', receivers=[
+                               receiver], content='验证码：'+code)
+        return 0, '发送成功'
+    except Exception as e:
+        print(e)  # need a logger
+        return 1, '发送失败'
+
+
 @api.route('/register')
 class Register(Resource):
+    # post
     RegisterReq = api.model('RegisterReq', {
         'username': fields.String(required=True, description='new account username', example='TianxiangZhang'),
-        'email': fields.String(required=True, description='new account email', example='ztx97@qq.com'),
+        'email': fields.String(required=True, description='new account email', example='16307130026@fudan.edu.cn'),
         'password': fields.String(required=True, description='new account password', example='123456789')
     })
     RegisterRsp = api.model('RegisterRsp', {
         'err_code': fields.Integer(required=True),
         'message': fields.String(required=True)
     })
-
-    # 看似重复，实际用处不同，前者用于document，后者真正用于解析，也可以自己直接用json解析body
+    # model用于document，aprser用于解析body
     parser = reqparse.RequestParser()
     parser.add_argument('username', required=True,
                         type=str, help='new account username')
@@ -31,7 +44,16 @@ class Register(Resource):
     parser.add_argument('password', required=True,
                         type=str, help='new account password')
 
-    # 所有api应该分为三部分：handler，logic和render
+    @api.doc('register')
+    @api.doc(body=RegisterReq)
+    @api.marshal_with(RegisterRsp)  # 通过marshal，可以自动将其中对应的项返回，未规定的项不返回
+    def post(self):
+        '''注册新用户'''
+        args = self.parser.parse_args()
+        err_code, message = self.do_register(
+            args.username, args.email, args.password)
+        return Render.common_response(err_code, message), 200
+
     def do_register(self, username, email, password):
         if not Checker.is_valid_username(username):
             return 1, '用户名不合法'
@@ -44,28 +66,20 @@ class Register(Resource):
         if User.query.filter_by(email=email).first():
             return 5, '邮箱已被注册'
         try:
-            user = User(username=username, email=email, password=password)
+            user = User(username=username, email=email,
+                        password=password, code=generate_random_code())
             user.save()
+            send_verify_code(user.code, user.email)
         except Exception as e:
             return 9, e.message
         return 0, '成功'
 
-    @api.doc('register')
-    # doc的model=XXX可以在文档中规定返回，但是不能限制真正返回结果，所以用marshal
-    @api.doc(body=RegisterReq)
-    @api.marshal_with(RegisterRsp)  # 通过marshal，可以自动将其中对应的项返回，未规定的项不返回
-    def post(self):
-        '''注册新用户'''
-        args = self.parser.parse_args()
-        err_code, message = self.do_register(
-            args.username, args.email, args.password)
-        return Render.common_response(err_code, message), 200
-
 
 @api.route('/login')
 class Login(Resource):
+    # post
     LoginReq = api.model('LoginReq', {
-        'username_or_email': fields.String(description='username or email', example='ztx97@qq.com'),
+        'username_or_email': fields.String(description='username or email', example='16307130026@fudan.edu.cn'),
         'password': fields.String(required=True, description='new account password', example='123456789')
     })
     LoginData = api.model('LoginData', {
@@ -78,12 +92,21 @@ class Login(Resource):
         'message': fields.String(),
         'data': fields.Nested(LoginData)
     })
-
     parser = reqparse.RequestParser()
     parser.add_argument('username_or_email', type=str,
                         help='username or email')
     parser.add_argument('password', required=True,
                         type=str, help='new user password')
+
+    @api.doc('login')
+    @api.doc(body=LoginReq)
+    @api.marshal_with(LoginRsp)
+    def post(self):
+        '''用户登录'''
+        args = self.parser.parse_args()
+        err_code, message, data = self.do_login(
+            args.username_or_email, args.password)
+        return Render.common_response(err_code, message, data), 200
 
     def do_login(self, username_or_email, password):
         data = {
@@ -114,41 +137,68 @@ class Login(Resource):
             return 9, str(e), data
         return 0, '成功', data
 
-    @api.doc('login')
-    @api.doc(body=LoginReq)
-    @api.marshal_with(LoginRsp)
+
+@api.route('/verify')
+class Verify(Resource):
+    # post
+    VerifyPostReq = api.model('VerifyPostReq', {
+        'session_id': fields.String(required=True),
+        'code': fields.String(required=True)
+    })
+    VerifyPostRsp = api.model('VerifyPostRsp', {
+        'err_code': fields.Integer(required=True),
+        'message': fields.String()
+    })
+    parser = reqparse.RequestParser()
+    parser.add_argument('session_id', type=str)
+    parser.add_argument('code', required=True)
+
+    @api.doc('verify')
+    @api.doc(body=VerifyPostReq)
+    @api.marshal_with(VerifyPostRsp)
     def post(self):
-        '''用户登录'''
+        '''用户邮箱认证'''
         args = self.parser.parse_args()
-        err_code, message, data = self.do_login(
-            args.username_or_email, args.password)
-        return Render.common_response(err_code, message, data), 200
+        err_code, message = self.do_verify(args)
+        return Render.common_response(err_code, message), 200
+
+    def do_verify(self, data):
+        user = get_login_user(data.session_id)
+        if not user:
+            return 1, '请登录'
+        if user.verify_code(data.code):
+            return 0, '成功'
+        else:
+            return 2, '失败'
 
 
-# @api.route('/<code>')
-# @api.param('code', 'The verify code')
-# class Auth(Resource):  # 需要登陆
-#     @api.doc('do_auth')
-#     def get(self, code):
-#         '''Auth user by code'''
-#         if not NOW_USER:
-#             return {'errCode': 1, 'message': 'please login'}, 200
-#         if NOW_USER['authed']:
-#             return {'errCode': 2, 'message': 'already authed'}, 200
-#         if code == '666':
-#             NOW_USER['authed'] = True
-#             return {'errCode': 0, 'message': 'OK'}, 200
-#         else:
-#             return {'errCode': 3, 'message': '验证码错误或已过期'}, 200
+@api.route('/send_code')
+class SendCode(Resource):
+    '''
+    POST: 发送邮箱验证码
+    '''
+    # post
+    SendCodeReq = api.model('SendCodeReq', {
+        'session_id': fields.String(required=True)
+    })
+    SendCodeRsp = api.model('SendCodeRsp', {
+        'err_code': fields.Integer(required=True),
+        'message': fields.String()
+    })
+    parser = reqparse.RequestParser()
+    parser.add_argument('session_id', type=str)
+    @api.doc('send_verify_code')
+    @api.doc(body=SendCodeReq)
+    @api.marshal_with(SendCodeRsp)
+    def post(self):
+        '''发送邮箱验证码'''
+        args = self.parser.parse_args()
+        err_code, message = self.do_send_code(args)
+        return Render.common_response(err_code, message), 200
 
-
-# @api.route('/now_user')
-# class NowUser(Resource):
-#     def get(self):
-#         return {'user': NOW_USER}, 200
-
-
-# @api.route('/now_users')
-# class NowUsers(Resource):
-#     def get(self):
-#         return {'users': USERS}, 200
+    def do_send_code(self, data):
+        user = get_login_user(data.session_id)
+        if not user:
+            return 1, '请登录'
+        send_verify_code(user.code, user.email)
+        return 0, '发送成功'

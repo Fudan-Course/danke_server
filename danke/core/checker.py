@@ -21,10 +21,9 @@ class Checker:
         '''判断邮箱是否合法'''
         if not email:
             return False
-        if not 3 <= len(email) <= 16:
+        if not 3 <= len(email) <= 30:
             return False
-        pattern = re.compile(
-            '^.+\\@(\\[?)[a-zA-Z0-9\\-\\.]+\\.([a-zA-Z]{2,3}|[0-9]{1,3})(\\]?)$')
+        pattern = re.compile(r'^[a-zA-Z0-9\._-]+@fudan\.edu\.cn$')
         if not pattern.match(email):
             return False
         return True
