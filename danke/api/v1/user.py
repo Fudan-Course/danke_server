@@ -117,16 +117,17 @@ class UserProfile(Resource):
     # put
     UserProfilePutReq = api.model('UserProfilePutReq', {
         'session_id': fields.String(required=True),
-        'description': fields.String()
+        'description': fields.String(),
+        'nickname': fields.String()
     })
     UserProfilePutRsp = api.model('UserProfilePutRsp', {
         'err_code': fields.Integer(required=True),
         'message': fields.String()
     })
     parser = reqparse.RequestParser()
-    parser.add_argument('session_id', required=True,
-                        type=str, help='new account username')
-    parser.add_argument('description', type=str, help='new account password')
+    parser.add_argument('session_id', required=True, type=str)
+    parser.add_argument('description', type=str)
+    parser.add_argument('nickname', type=str)
 
     @api.doc('update_user_profile')
     @api.doc(body=UserProfilePutReq)
@@ -150,6 +151,8 @@ class UserProfile(Resource):
         # update user by data
         if data.description:
             user.description = data.description  # TODO: 防止攻击
+        if data.nickname:
+            user.nickname = data.nickname  # TODO: 防止攻击
         try:
             user.save()
             return 0, '成功'
