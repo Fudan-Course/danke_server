@@ -7,70 +7,70 @@ from danke.database.user import User as UserModel
 api = Namespace('users', description='用户数据相关操作')
 
 
-@api.route('/')
-class Users(Resource):  # 占位，具体功能有待商榷
-    UsersDataItem = api.model('UsersDataItem', {
-        'username': fields.String(required=True, description='用户名'),
-        'email': fields.String(required=True, description='邮箱')
-    })
-    UsersRsp = api.model('UsersRsp', {
-        'err_code': fields.Integer(required=True),
-        'message': fields.String(),
-        'data': fields.List(fields.Nested(UsersDataItem))
-    })
-    # TODO 这个API应该加上分页，筛选和排序(用parser)，并设置权限
-    @api.doc('get_users')  # 起到id的作用，用于帮助理解
-    @api.marshal_with(UsersRsp)  # 通过marshal，可以自动将其中对应的项返回，其他项不返回
-    def get(self):
-        '''获取用户列表'''
-        err_code, message, data = self.do_get_users()
-        return Render.common_response(err_code, message, data), 200
+# @api.route('/')
+# class Users(Resource):  # 占位，具体功能有待商榷
+#     UsersDataItem = api.model('UsersDataItem', {
+#         'username': fields.String(required=True, description='用户名'),
+#         'email': fields.String(required=True, description='邮箱')
+#     })
+#     UsersRsp = api.model('UsersRsp', {
+#         'err_code': fields.Integer(required=True),
+#         'message': fields.String(),
+#         'data': fields.List(fields.Nested(UsersDataItem))
+#     })
+#     # TODO 这个API应该加上分页，筛选和排序(用parser)，并设置权限
+#     @api.doc('get_users')  # 起到id的作用，用于帮助理解
+#     @api.marshal_with(UsersRsp)  # 通过marshal，可以自动将其中对应的项返回，其他项不返回
+#     def get(self):
+#         '''获取用户列表'''
+#         err_code, message, data = self.do_get_users()
+#         return Render.common_response(err_code, message, data), 200
 
-    def do_get_users(self):
-        try:
-            users = UserModel.query.all()
-        except Exception as e:
-            return 1, e.message, None
-        return 0, '成功', users
+#     def do_get_users(self):
+#         try:
+#             users = UserModel.query.all()
+#         except Exception as e:
+#             return 1, e.message, None
+#         return 0, '成功', users
 
 
-@api.route('/<user_id>')
-@api.param('user_id', '用户id')
-class User(Resource):  # 占位，这里应该是数据相关的API
-    # 获取用户资料应该使用profile，本API用于调试
-    # 获取用户数据 TODO 删除本API
-    UserData = api.model('UserData', {
-        'id': fields.Integer(required=True),
-        'username': fields.String(),
-        'email': fields.String(),
-        'password': fields.String()
-    })
-    UserRsp = api.model('UserRsp', {
-        'err_code': fields.Integer(required=True),
-        'message': fields.String(),
-        'data': fields.Nested(UserData)
-    })
-    @api.doc('get_user_profile')
-    @api.marshal_with(UserRsp)
-    def get(self, user_id):
-        '''通过id获取用户数据'''
-        err_code, message, data = self.do_get_user(int(user_id))
-        return Render.common_response(err_code, message, data), 200
+# @api.route('/<user_id>')
+# @api.param('user_id', '用户id')
+# class User(Resource):  # 占位，这里应该是数据相关的API
+#     # 获取用户资料应该使用profile，本API用于调试
+#     # 获取用户数据 TODO 删除本API
+#     UserData = api.model('UserData', {
+#         'id': fields.Integer(required=True),
+#         'username': fields.String(),
+#         'email': fields.String(),
+#         'password': fields.String()
+#     })
+#     UserRsp = api.model('UserRsp', {
+#         'err_code': fields.Integer(required=True),
+#         'message': fields.String(),
+#         'data': fields.Nested(UserData)
+#     })
+#     @api.doc('get_user_profile')
+#     @api.marshal_with(UserRsp)
+#     def get(self, user_id):
+#         '''通过id获取用户数据'''
+#         err_code, message, data = self.do_get_user(int(user_id))
+#         return Render.common_response(err_code, message, data), 200
 
-    def do_get_user(self, user_id):
-        data = {
-            'user_id': -1,
-            'username': '',
-            'session_id': ''
-        }
-        user = None
-        try:
-            user = UserModel.query.filter_by(id=user_id).first()
-            if not user:
-                return 1, '用户不存在', None
-        except Exception as e:
-            return 9, e.message, None
-        return 0, '成功', user
+#     def do_get_user(self, user_id):
+#         data = {
+#             'user_id': -1,
+#             'username': '',
+#             'session_id': ''
+#         }
+#         user = None
+#         try:
+#             user = UserModel.query.filter_by(id=user_id).first()
+#             if not user:
+#                 return 1, '用户不存在', None
+#         except Exception as e:
+#             return 9, e.message, None
+#         return 0, '成功', user
 
 
 @api.route('/<user_id>/profile')
