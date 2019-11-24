@@ -1,7 +1,5 @@
 import re
 
-from danke import settings
-
 
 class Checker:
     @staticmethod

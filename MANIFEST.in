@@ -1,0 +1,4 @@
+include danke/admin.sql
+graft danke/sqlite.db
+graft danke/instance
+global-exclude *.pyc

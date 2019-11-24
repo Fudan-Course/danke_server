@@ -1,5 +1,4 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
-from danke import settings
 from danke.core.render import Render
 from danke.core.tool import *
 from danke.database.user import User as UserModel

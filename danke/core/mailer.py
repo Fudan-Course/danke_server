@@ -3,7 +3,7 @@ import threading
 from flask import current_app
 from flask_mail import Mail, Message
 
-from danke.settings import settings
+import danke.config as config
 
 mailer = Mail()
 
@@ -19,14 +19,14 @@ class Mailer:
             print(msg)
 
     @staticmethod
-    def send_email_sync(title, receivers, content, sender=settings['MAIL_DEFAULT_SENDER']):
+    def send_email_sync(title, receivers, content, sender=config.MAIL_DEFAULT_SENDER):
         app = current_app._get_current_object()
         msg = Message(title, sender=sender, recipients=receivers)
         msg.body = content
         Mailer.__send_email(app, msg)
 
     @staticmethod
-    def send_email_async(title, receivers, content, sender=settings['MAIL_DEFAULT_SENDER']):
+    def send_email_async(title, receivers, content, sender=config.MAIL_DEFAULT_SENDER):
         app = current_app._get_current_object()
         msg = Message(title, sender=sender, recipients=receivers)
         msg.body = content

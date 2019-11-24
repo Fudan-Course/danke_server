@@ -1,6 +1,3 @@
-from danke import settings
-
-
 class Render:
     @staticmethod
     def common_response(err_code, message, data=None):

@@ -1,6 +1,5 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
 
-from danke import settings
 from danke.core.checker import Checker
 from danke.core.render import Render
 from danke.core.mailer import Mailer

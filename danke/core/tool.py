@@ -3,7 +3,6 @@
 '''
 import random
 
-from danke import settings
 from danke.database.user import User
 from danke.database.session import Session
 
