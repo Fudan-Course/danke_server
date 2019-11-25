@@ -1,6 +1,13 @@
-name: Python application
+name: Commit Check
 
-on: [push]
+on:
+  push:
+    branches: 
+      - master
+
+env:
+  FLASK_APP: danke
+  FLASK_ENV: development
 
 jobs:
   build:
@@ -30,5 +37,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        export FLASK_APP=danke
         pytest
