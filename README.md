@@ -1,5 +1,7 @@
 # 旦课
 
+![Commit Check](https://github.com/actions/danke_server/workflows/.github/workflows/pythonapp.yml/badge.svg)
+
 复旦课程论坛
 
 ## 部署
