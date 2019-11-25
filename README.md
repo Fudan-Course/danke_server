@@ -1,6 +1,6 @@
 # 旦课
 
-![Commit Check](https://github.com/Fudan-Course/danke_server/workflows/pythonapp.yml/badge.svg?event=push)
+![Commit Check](https://github.com/Fudan-Course/danke_server/workflows/Commit%20Check/badge.svg?event=push)
 
 复旦课程论坛
 
