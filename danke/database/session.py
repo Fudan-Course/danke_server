@@ -41,3 +41,9 @@ class Session(db.Model):
         else:
             self.delete()
             return False
+
+    @staticmethod
+    def find_session(session_id):
+        if not session_id:
+            return None
+        return Session.query.filter_by(id=session_id).first()

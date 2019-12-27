@@ -101,12 +101,12 @@ class UserProfile(Resource):
         return Render.common_response(err_code, message, data), 200
 
     def do_get_user_profile(self, user_id):
-        user = UserModel.find_user(user_id=user_id)
+        user = UserModel.find(user_id=user_id)
         if not user:
             return 1, '用戶不存在', None
         data = {
             'user_id': user.id,
-            'username': user.username,
+            'username': user.name,
             'email': user.email,
             'description': user.description,
             'nickname': user.nickname
@@ -129,13 +129,13 @@ class UserProfile(Resource):
     parser.add_argument('nickname', type=str)
 
     @api.doc('update_user_profile')
-    @api.doc(body=UserProfilePutReq)
+    @api.expect(UserProfilePutReq)
     @api.marshal_with(UserProfilePutRsp)
     def put(self, user_id):
         '''通过user_id更新用户数据'''
         # get data from post
-        args = self.parser.parse_args()
-        err_code, message = self.do_update_user_profile(int(user_id), args)
+        kwargs = self.parser.parse_args()
+        err_code, message = self.do_update_user_profile(int(user_id), kwargs)
         return Render.common_response(err_code, message), 200
 
     def do_update_user_profile(self, user_id, data):
@@ -144,7 +144,7 @@ class UserProfile(Resource):
             return 1, '请登录'
         if now_user.id != user_id and not now_user.have_permission(2):
             return 1, '没有权限'
-        user = UserModel.find_user(user_id=user_id)
+        user = UserModel.find(user_id=user_id)
         if not user:
             return 2, '被修改资料用户不存在'
         # update user by data

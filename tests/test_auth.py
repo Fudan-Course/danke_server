@@ -5,11 +5,12 @@ from danke.database import db
 
 def test_register(client, app):
     rsp = client.post(
-        'api/v1/auth/register', data={'username': 'dead', 'password': '123456', 'description': 'new user', 'nickname': 'dead'}
+        'api/v1/auth/register', json={'username': 'dead', 'password': '123456', 'email': '16307130026@fudan.edu.cn'}
     )
-    rsp_json = rsp.json
-    print(rsp_json)
-
+    print(rsp.json)
+    print(rsp.status)
+    assert rsp.status_code == 200
+    assert rsp.json['err_code'] == 0
     # with app.app_context():
     #     assert get_db().execute(
     #         "select * from user where username = 'a'",

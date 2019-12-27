@@ -1,4 +1,5 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
+from flask import request
 
 from danke.core.checker import Checker
 from danke.core.render import Render
@@ -44,13 +45,15 @@ class Register(Resource):
                         type=str, help='new account password')
 
     @api.doc('register')
-    @api.doc(body=RegisterReq)
+    @api.expect(RegisterReq, validate=False)
     @api.marshal_with(RegisterRsp)  # 通过marshal，可以自动将其中对应的项返回，未规定的项不返回
     def post(self):
         '''注册新用户'''
-        args = self.parser.parse_args()
+        print(request.data)
+        print(api.payload)
+        kwargs = self.parser.parse_args()
         err_code, message = self.do_register(
-            args.username, args.email, args.password)
+            kwargs.username, kwargs.email, kwargs.password)
         return Render.common_response(err_code, message), 200
 
     def do_register(self, username, email, password):
@@ -60,17 +63,18 @@ class Register(Resource):
             return 2, '密码不合法'
         if not Checker.is_valid_email(email):
             return 3, '邮箱不合法'
-        if User.query.filter_by(username=username).first():
+        if User.query.filter_by(name=username).first():
             return 4, '用户名已被注册'
         if User.query.filter_by(email=email).first():
             return 5, '邮箱已被注册'
         try:
-            user = User(username=username, email=email,
+            user = User(name=username, email=email,
                         password=password, code=generate_random_code())
             user.save()
-            send_verify_code(user.code, user.email)
+            res = send_verify_code(user.code, user.email)
+            print(res)
         except Exception as e:
-            return 9, e.message
+            return 9, str(e)
         return 0, '成功'
 
 
@@ -83,7 +87,7 @@ class Login(Resource):
     })
     LoginData = api.model('LoginData', {
         'user_id': fields.Integer(required=True),
-        'username': fields.String(),
+        'nickname': fields.String(),
         'session_id': fields.String(required=True)
     })
     LoginRsp = api.model('LoginRsp', {
@@ -96,13 +100,13 @@ class Login(Resource):
     parser.add_argument('password', required=True, type=str)
 
     @api.doc('login')
-    @api.doc(body=LoginReq)
+    @api.expect(LoginReq)
     @api.marshal_with(LoginRsp)
     def post(self):
         '''用户登录'''
-        args = self.parser.parse_args()
+        kwargs = self.parser.parse_args()
         err_code, message, data = self.do_login(
-            args.username_or_email, args.password)
+            kwargs.username_or_email, kwargs.password)
         return Render.common_response(err_code, message, data), 200
 
     def do_login(self, username_or_email, password):
@@ -119,7 +123,7 @@ class Login(Resource):
             if not user:
                 return 2, '邮箱不存在', data
         else:
-            user = User.query.filter_by(username=username_or_email).first()
+            user = User.query.filter_by(name=username_or_email).first()
             if not user:
                 return 3, '用户名不存在', data
         if user.password != password:
@@ -128,11 +132,40 @@ class Login(Resource):
             session = Session(user)
             session.save()
             data['user_id'] = user.id
-            data['username'] = user.username
+            data['nickname'] = user.nickname
             data['session_id'] = session.id
         except Exception as e:
             return 9, str(e), data
         return 0, '成功', data
+
+
+@api.route('/logout')
+class Logout(Resource):
+    # pos
+    LogoutReq = api.model('LogoutReq', {
+        'session_id': fields.String(required=True)
+    })
+    LogoutRsp = api.model('LogoutRsp', {
+        'err_code': fields.Integer(required=True),
+        'message': fields.String()
+    })
+    parser = reqparse.RequestParser()
+    parser.add_argument('session_id', required=True, type=str)
+
+    @api.doc('logout')
+    @api.expect(LogoutReq)
+    @api.marshal_with(LogoutRsp)
+    def post(self):
+        '''用户登出'''
+        kwargs = self.parser.parse_args()
+        err_code, message = self.do_logout(kwargs.session_id)
+        return Render.common_response(err_code, message), 200
+
+    def do_logout(self, session_id):
+        session = Session.find_session(session_id)
+        if session:
+            session.delete()
+        return 0, '登出成功'
 
 
 @api.route('/verify')
@@ -151,12 +184,12 @@ class Verify(Resource):
     parser.add_argument('code', required=True)
 
     @api.doc('verify')
-    @api.doc(body=VerifyPostReq)
+    @api.expect(VerifyPostReq)
     @api.marshal_with(VerifyPostRsp)
     def post(self):
         '''用户邮箱认证'''
-        args = self.parser.parse_args()
-        err_code, message = self.do_verify(args)
+        kwargs = self.parser.parse_args()
+        err_code, message = self.do_verify(kwargs)
         return Render.common_response(err_code, message), 200
 
     def do_verify(self, data):
@@ -185,12 +218,12 @@ class SendCode(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('session_id', type=str)
     @api.doc('send_verify_code')
-    @api.doc(body=SendCodeReq)
+    @api.expect(SendCodeReq)
     @api.marshal_with(SendCodeRsp)
     def post(self):
         '''发送邮箱验证码'''
-        args = self.parser.parse_args()
-        err_code, message = self.do_send_code(args)
+        kwargs = self.parser.parse_args()
+        err_code, message = self.do_send_code(kwargs)
         return Render.common_response(err_code, message), 200
 
     def do_send_code(self, data):

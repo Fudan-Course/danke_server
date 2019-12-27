@@ -6,6 +6,10 @@ from flask.cli import with_appcontext
 
 db = SQLAlchemy()
 
+'''
+所有需要commit的操作应该由database目录下的函数完成
+视图函数应该只调用而不手动commit
+'''
 
 def excute_sql(sql):
     # 只支持一次执行一条sql语句

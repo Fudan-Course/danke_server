@@ -1,6 +1,8 @@
 from danke.database import db
 from .session import Session
 
+import time
+
 
 class UserPermission(db.Model):
     '''
@@ -26,23 +28,27 @@ class UserPermission(db.Model):
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(40), unique=True, index=True)  # 用户名
+    name = db.Column(db.String(40), unique=True, index=True)  # 用户名
     email = db.Column(db.String(120), unique=True)  # 邮箱
     password = db.Column(db.String(120))  # 密码
     description = db.Column(db.String(240))  # 个人介绍
+    avatar = db.Column(db.String(240))  # 头像链接
     nickname = db.Column(db.String(40))  # 昵称
     code = db.Column(db.String(40))  # 验证码，如果验证成功，这一项则为空串
+    user_time = db.Column(db.Integer)
 
-    def __init__(self, username, email, password, code):
-        self.username = username
+    def __init__(self, name, email, password, code):
+        self.name = name
         self.email = email
         self.password = password
         self.description = ''
-        self.nickname = username
+        self.nickname = name
         self.code = code
+        self.avatar = ''
+        self.user_time = int(time.time())
 
     def __repr__(self):
-        return "<User:%r password:%r email:%r>" % (self.username, self.password, self.email)
+        return "<User:%r password:%r email:%r>" % (self.name, self.password, self.email)
 
     def save(self):
         db.session.add(self)
@@ -93,16 +99,13 @@ class User(db.Model):
 
     @staticmethod
     def get_cur_user(session_id=None):
-        if not session_id:
-            return None
-        sessions = Session.query.filter_by(id=session_id).all()
-        for s in sessions:
-            if s.is_valid():
-                return s.user
+        session = Session.find_session(session_id)
+        if session and session.is_valid():
+            return session.user
         return None
 
     @staticmethod
-    def find_user(nickname=None, user_id=None):
+    def find(nickname=None, user_id=None):
         if user_id:
             return User.query.filter_by(id=user_id).first()
         if nickname:
